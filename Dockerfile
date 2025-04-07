@@ -1,35 +1,46 @@
-# AIO Demo by AlfredG
-FROM python:3.11.7
+# 汽车销售通话分析系统
+FROM ubuntu:22.04
 
-ENV MODE="DEMO"
-ENV LANG="C.UTF-8"
-ENV TZ="Asia/Shanghai"
+# 设置环境变量
+ENV LANG="C.UTF-8" \
+    TZ="Asia/Shanghai" \
+    PYTHONUNBUFFERED=1 \
+    MODEL_PATH="models/SenseVoiceSmall" \
+    LLM_MODEL="qwen2.5-32b-instruct" \
+    LLM_BASE="https://dashscope.aliyuncs.com/compatible-mode/v1" \
+    DEBIAN_FRONTEND=noninteractive \
+    PIP_INDEX_URL="https://mirrors.cloud.tencent.com/pypi/simple/" \
+    PIP_TRUSTED_HOST="mirrors.cloud.tencent.com"
 
-RUN apt-get update \
- && apt-get install -y nano dumb-init ffmpeg\
- && rm -rf /var/lib/apt/lists/*
+# 配置apt源为腾讯云并安装基础依赖
+RUN sed -i 's/archive.ubuntu.com/mirrors.cloud.tencent.com/g' /etc/apt/sources.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        python3.11 \
+        python3-pip \
+        python3.11-venv \
+        ffmpeg \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -s /usr/bin/python3.11 /usr/bin/python \
+    && ln -s /usr/bin/pip3 /usr/bin/pip
 
-RUN echo "Install AI related packages" \
-  && pip3 install --no-cache-dir torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu \
-  && pip3 install --no-cache-dir openai==1.54.4 transformers==4.46.2 numpy==1.26.3 pandas==2.2.0 torchvision==0.20.1 torchaudio==2.5.1 
-RUN echo "Install AI models" \
-  && pip3 install --no-cache-dir modelscope==1.19.2 funasr==1.1.14 ffmpeg==1.4 ffmpeg-python==0.2.0 fastapi==0.115.4 python-multipart==0.0.17  \
-  && pip install vllm==0.6.4.post1 accelerate==1.1.1
-RUN echo "Install packages for Streamlit ui" \
-  && pip3 install --no-cache-dir streamlit==1.30.0 
-RUN echo "Install function packages" \
-  && pip3 install --no-cache-dir openpyxl==3.1.2 xlsxwriter==3.1.9
-RUN echo "Install commandline management packages" \
-  && pip3 install --no-cache-dir tqdm==4.66.1 fire==0.5.0 
-
-# copy source files
-COPY ./*.py /app/
-COPY ./models /app/models
-COPY ./data /app/data
-
-STOPSIGNAL SIGINT
+# 创建工作目录
 WORKDIR /app
-EXPOSE 8888
 
-ENTRYPOINT ["streamlit", "run", "demo.py", "--server.port=8888", "--server.address=0.0.0.0"]
+# 复制依赖文件
+COPY requirements.txt .
 
+# 安装Python依赖
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir torch==2.5.1 --index-url https://mirrors.cloud.tencent.com/pypi/simple/
+
+# 复制应用代码和模型
+COPY ./*.py ./
+COPY ./models ./models
+COPY ./data ./data
+
+# 暴露API端口
+EXPOSE 8501
+
+# 使用uvicorn启动FastAPI应用
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8501"]

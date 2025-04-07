@@ -1,0 +1,26 @@
+[Unit]
+Description=Car Call Sales Analysis Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/ccs
+Environment=PYTHONUNBUFFERED=1
+Environment=MODEL_PATH=models/SenseVoiceSmall
+Environment=LLM_MODEL=qwen2.5-32b-instruct
+Environment=LLM_BASE=https://dashscope.aliyuncs.com/compatible-mode/v1
+
+ExecStart=/opt/ccs/venv/bin/python3 -m uvicorn api:app --host 0.0.0.0 --port 8501
+Restart=always
+RestartSec=10
+
+# 限制资源使用
+LimitNOFILE=65535
+TimeoutStartSec=0
+# 给足够的启动时间，因为需要加载模型
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

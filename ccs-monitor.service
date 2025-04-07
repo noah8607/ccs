@@ -1,0 +1,16 @@
+[Unit]
+Description=CCS Service Monitor
+After=ccs.service
+Requires=ccs.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/ccs
+ExecStart=/opt/ccs/monitor.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
